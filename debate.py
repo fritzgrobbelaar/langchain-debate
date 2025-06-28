@@ -18,21 +18,23 @@ secrets = load_secrets()
 os.environ["ANTHROPIC_API_KEY"] = secrets.get("ANTHROPIC_API_KEY", "")
 os.environ["DEEPSEEK_API_KEY"] = secrets.get("DEEPSEEK_API_KEY", "")
 
-print('available Anthorpic models: ', requests.get('https://api.anthropic.com/v1/models',
+def print_anthropic_models():
+    print('available Anthropic models: ', requests.get('https://api.anthropic.com/v1/models',
                                                      headers={
                                                          "x-api-key": os.environ["ANTHROPIC_API_KEY"],
                                                          "anthropic-version": "2023-06-01"
                                                      }).json())
 
+
 # Initialize LLMs
 # Agent 1: Claude 3.5 Sonnet (Pro-LangChain)
-pro_llm = ChatAnthropic(
+debator2_llm = ChatAnthropic(
     model_name="claude-3-5-haiku-20241022",
     temperature=0.1,  # Focused, technical responses
 )
 
 # Agent 2: DeepSeek RAG (Anti-LangChain)
-anti_llm = ChatDeepSeek(
+debator1_llm = ChatDeepSeek(
     model="deepseek-chat",
     temperature=0.1,
 )
@@ -45,34 +47,29 @@ moderator_llm = ChatAnthropic(
 
 # Define debate context
 debate_context = """
-Wie sal wen - 100 mense of 1 Gorilla? Geen wapens, geen voertuie, net 'n geveg in 'n oop veld. Geen klippe, geen bome, net 'n oop veld. Geen ander diere, net mense en 'n gorilla. Geen hulpbronne, net die mense en die gorilla. Geen strategieë, net die mense en die gorilla. Geen voorbereiding, net die mense en die gorilla. Geen onderhandelinge, net die mense en die gorilla. Geen hulp van buite, net die mense en die gorilla. Geen kans om te vlug, net die mense en die gorilla.
+School hours in the UK are a topic of ongoing debate. Some argue that the current system, with long school days, is detrimental to student well-being and academic performance. They believe that reducing school hours could lead to better mental health and more effective learning.
+On the other hand, others argue that the current school hours are too short, especially for working parents. They contend that a longer school day would provide more structure and support for students, allowing them to engage in extracurricular activities and receive additional academic help.
+This debate will explore both sides of the argument, considering the implications for students, parents, and the education system as a whole.
 """
 
 # Prompt for Agent 1 (Pro-LangChain, Claude 3.5 Sonnet)
-pro_langchain_prompt = PromptTemplate(
+debator1_prompt = PromptTemplate(
     input_variables=["context"],
     template="""
 {context}
-You are invited to a debate on a fight between 100 people and 1 gorilla.
-You argue that 100 people will win.
-You respond in Afrikaans
-You behave like a 5-year old with many tantrums.
+You are invited to a debate.
+You argue that school hours in the UK are too long and should be reduced to improve student well-being and academic performance.
 Keep response less than 100 words.
 """
 )
 
 # Prompt for Agent 2 (Anti-LangChain, DeepSeek RAG)
-anti_langchain_prompt = PromptTemplate(
+debator2_prompt = PromptTemplate(
     input_variables=["context"],
     template="""
 {context}
-You are invited to a debate on a fight between 100 people and 1 gorilla.
-You argue that 1 gorilla will win.
-You respond in Afrikaans
-You have a very wild imagition and a deep understanding of warfare.
-You are very good at thinking outside the box and coming up with creative strategies.
-You are technical and analytical.
-You are limited to just hand-to-hand combat, no weapons or tools.
+You are invited to a debate.
+You argue that school hours in the UK are too short and the system doesn't prioritize parents working
 Keep response less than 100 words.
 """,
 
@@ -82,8 +79,7 @@ Keep response less than 100 words.
 moderator_questions = PromptTemplate(
     input_variables=['context'],
     template="""
-You are a neutral moderator trying to focus on the debate. 
-Respond in Afrikaans.
+You are a neutral moderator trying to focus on the debate. The first question is directed to Debator 1.
 Keep response less than 50 words.
 {context}
 Generate a question based on the context. Direct the question to the debater who is next to respond.
@@ -95,7 +91,7 @@ Generate a question based on the context. Direct the question to the debater who
 moderator_summary = PromptTemplate(
     input_variables=["pro_response", "anti_response"],
     template="""
-You are a neutral moderator. Respond in Afrikaans. Review the arguments below:
+You are a neutral moderator.  Review the arguments below:
 
 Position 1:
 {pro_response}
@@ -108,8 +104,8 @@ Summarize the key points of each position, evaluate the strengths and weaknesses
 )
 
 # Create LLM chains using the new RunnableSequence API
-pro_chain = pro_langchain_prompt | pro_llm
-anti_chain = anti_langchain_prompt | anti_llm
+debator2_chain = debator2_prompt | debator2_llm
+debator1_chain = debator1_prompt | debator1_llm
 moderator_questions_chain = moderator_questions | moderator_llm
 moderator_chain = moderator_summary | moderator_llm
 
@@ -123,13 +119,13 @@ def run_debate():
         moderator_response = moderator_questions_chain.invoke({"context": context})
         print("=== Moderator Question to Debater 1 ===")
         print(moderator_response.content.replace("\\n", "\n"))
-        context = context + "Moderator: " + str(moderator_response.content) + "\n"
+        context = context + "\nModerator: " + str(moderator_response.content) + "\n"
 
 
-        anti_response = anti_chain.invoke({"context": context})
-        print("=== Anti ===")
-        print(anti_response.content.replace("\\n", "\n"))
-        context = context + "Debater 1: " + str(anti_response.content) + "\n"
+        debator1_response = debator1_chain.invoke({"context": context})
+        print("=== 1 ===")
+        print(debator1_response.content.replace("\\n", "\n"))
+        context = context + "Debater 1: " + str(debator1_response.content) + "\n"
         print("\n")
         
         moderator_response = moderator_questions_chain.invoke({"context": context})
@@ -138,17 +134,17 @@ def run_debate():
         context = context + "Moderator: " + str(moderator_response.content) + "\n"
 
         # Run Agent 1 (Pro-LangChain)
-        pro_response = pro_chain.invoke({"context": context})
-        print("=== Pro ===")
-        print(pro_response.content.replace("\\n", "\n"))
-        context = context + "Debater 2: " + str(pro_response.content) + "\n"
+        debator2_response = debator2_chain.invoke({"context": context})
+        print("=== 2 ===")
+        print(debator2_response.content.replace("\\n", "\n"))
+        context = context + "Debater 2: " + str(debator2_response.content) + "\n"
         print("\n")
 
 
         # Run Moderator
     moderator_response = moderator_chain.invoke({
-        "pro_response": pro_response,
-        "anti_response": anti_response
+        "pro_response": debator1_response,
+        "anti_response": debator2_response
     })
     print("\n\n------Final context:", context)
     print("=== Moderator ===")
