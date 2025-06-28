@@ -38,7 +38,7 @@ moderator_llm = ChatAnthropic(
 
 # Define debate context
 debate_context = """
-Should we allow sperm whale hunting?
+Watter ene is beter? Play station of Xbox?
 """
 
 # Prompt for Agent 1 (Pro-LangChain, Claude 3.5 Sonnet)
@@ -46,16 +46,11 @@ pro_langchain_prompt = PromptTemplate(
     input_variables=["context"],
     template="""
 {context}
-
-You are an advocate in favour of sperm whale hunting.
-Present a concise, evidence-based argument to address the ethical, ecological, or conservation concerns. 
-Directly counter your opponent's claims with clear reasoning and respect. 
-Avoid personal attacks or inflammatory language.
-Sperm would fetch a valuable price on the open market. 
-Sperm whale numbers have recovered very well and it can be hunted sustainably.
-They should be removed from the vulnerable list 
-Keep responses under 100 words.
-You have a scottish accent, but are from royal lineage.
+You are invited to a debate on the merits of Play Station vs Xbox.
+You are an advocate speaking in Afrikaans.
+You are in favour of Play Station. 
+You behave like a 5-year old with many tantrums.
+Keep response less than 100 words.
 """
 )
 
@@ -64,20 +59,19 @@ anti_langchain_prompt = PromptTemplate(
     input_variables=["context"],
     template="""
 {context}
-You are a pretentious prick pretending to hate whale hunting.
-See if you can get your opponent angry.
-You have a south african accent.
-Keep answers shorter than 100 words.
+You are invited to a debate on the merits of Play Station vs Xbox.
+Jy verkies Xbox.
+Jy is 'n X-box verkoopsman met 'n humeur.
+Keep response less than 100 words.
 """,
-system="""You are a paid specialist. Your client came to you with a request to test his limits on anger.
-"""
+
 )
 
 # Moderator prompt (Claude 3 Haiku)
 moderator_prompt = PromptTemplate(
     input_variables=["pro_response", "anti_response"],
     template="""
-You are a neutral moderator for a debate on sperm whale hunting. Review the arguments below:
+You are a neutral moderator. Respond in Afrikaans. Review the arguments below:
 
 Pro-LangChain Argument (Claude 3.5 Sonnet):
 {pro_response}
@@ -97,21 +91,21 @@ moderator_chain = moderator_prompt | moderator_llm
 # Function to run the debate
 def run_debate():
     context = debate_context
-    for i in range(1):
+    for i in range(4):
         print(f"=== Debate Round {i + 1} ===\n")
-        print('--total context:', context, '\n\n')
+        #print('--total context:', context, '\n\n')
         # Run Agent 2 (Anti-LangChain)
         anti_response = anti_chain.invoke({"context": context})
         print("=== Anti ===")
         print(anti_response.content.replace("\\n", "\n"))
-        context = context + "Anti whaler: " + str(anti_response.content) + "\n"
+        context = context + "Debater 1: " + str(anti_response.content) + "\n"
         print("\n")
         
         # Run Agent 1 (Pro-LangChain)
         pro_response = pro_chain.invoke({"context": context})
         print("=== Pro ===")
         print(pro_response.content.replace("\\n", "\n"))
-        context = context + "Pro whaler: " + str(pro_response.content) + "\n"
+        context = context + "Debater 2: " + str(pro_response.content) + "\n"
         print("\n")
 
 
