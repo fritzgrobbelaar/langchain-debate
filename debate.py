@@ -5,7 +5,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
 # Load API keys from secrets.txt
-def load_secrets(file_path="secrets.txt"):
+def load_secrets(file_path="../secrets.txt"):
     secrets = {}
     with open(file_path, 'r') as file:
         for line in file:
@@ -21,19 +21,19 @@ os.environ["DEEPSEEK_API_KEY"] = secrets.get("DEEPSEEK_API_KEY", "")
 # Agent 1: Claude 3.5 Sonnet (Pro-LangChain)
 pro_llm = ChatAnthropic(
     model_name="claude-opus-4-20250514",
-    temperature=0.4,  # Focused, technical responses
+    temperature=0.2,  # Focused, technical responses
 )
 
 # Agent 2: DeepSeek RAG (Anti-LangChain)
 anti_llm = ChatDeepSeek(
     model="deepseek-chat",
-    temperature=0.4,
+    temperature=0.2,
 )
 
 # Moderator: Claude 3 Haiku (Smaller Anthropic model)
 moderator_llm = ChatAnthropic(
     model_name="claude-3-opus-20240229",
-    temperature=0.4,
+    temperature=0.2,
 )
 
 # Define debate context
@@ -42,23 +42,34 @@ Should we allow sperm whale hunting?
 """
 
 # Prompt for Agent 1 (Pro-LangChain, Claude 3.5 Sonnet)
-anti_langchain_prompt = PromptTemplate(
-    input_variables=["context"],
-    template="""
-{context}
-
-You want to hunt whales.
-Keep answers shorter than 100 words"""
-)
-
-# Prompt for Agent 2 (Anti-LangChain, DeepSeek RAG)
 pro_langchain_prompt = PromptTemplate(
     input_variables=["context"],
     template="""
 {context}
+
+You are an advocate in favour of sperm whale hunting.
+Present a concise, evidence-based argument to address the ethical, ecological, or conservation concerns. 
+Directly counter your opponent's claims with clear reasoning and respect. 
+Avoid personal attacks or inflammatory language.
+Sperm would fetch a valuable price on the open market. 
+Sperm whale numbers have recovered very well and it can be hunted sustainably.
+They should be removed from the vulnerable list 
+Keep responses under 100 words.
+You have a scottish accent, but are from royal lineage.
+"""
+)
+
+# Prompt for Agent 2 (Anti-LangChain, DeepSeek RAG)
+anti_langchain_prompt = PromptTemplate(
+    input_variables=["context"],
+    template="""
+{context}
 You are a pretentious prick pretending to hate whale hunting.
-See if you can get your opponent angry
+See if you can get your opponent angry.
+You have a south african accent.
 Keep answers shorter than 100 words.
+""",
+system="""You are a paid specialist. Your client came to you with a request to test his limits on anger.
 """
 )
 
@@ -66,7 +77,7 @@ Keep answers shorter than 100 words.
 moderator_prompt = PromptTemplate(
     input_variables=["pro_response", "anti_response"],
     template="""
-You are a neutral AI migration expert. Review the following arguments from two AI agents debating whale hunting
+You are a neutral moderator for a debate on sperm whale hunting. Review the arguments below:
 
 Pro-LangChain Argument (Claude 3.5 Sonnet):
 {pro_response}
@@ -86,7 +97,7 @@ moderator_chain = moderator_prompt | moderator_llm
 # Function to run the debate
 def run_debate():
     context = debate_context
-    for i in range(3):
+    for i in range(1):
         print(f"=== Debate Round {i + 1} ===\n")
         print('--total context:', context, '\n\n')
         # Run Agent 2 (Anti-LangChain)
@@ -105,13 +116,13 @@ def run_debate():
 
 
         # Run Moderator
-        moderator_response = moderator_chain.invoke({
-            "pro_response": pro_response,
-            "anti_response": anti_response
-        })
-        print("=== Moderator ===")
-        print(moderator_response.content.replace("\\n", "\n"))
-
+    moderator_response = moderator_chain.invoke({
+        "pro_response": pro_response,
+        "anti_response": anti_response
+    })
+    print("=== Moderator ===")
+    print(moderator_response.content.replace("\\n", "\n"))
+    print("Final context:", context)
 
 # Execute the debate
 if __name__ == "__main__":
