@@ -21,24 +21,24 @@ os.environ["DEEPSEEK_API_KEY"] = secrets.get("DEEPSEEK_API_KEY", "")
 # Agent 1: Claude 3.5 Sonnet (Pro-LangChain)
 pro_llm = ChatAnthropic(
     model_name="claude-opus-4-20250514",
-    temperature=0.2,  # Focused, technical responses
+    temperature=0.1,  # Focused, technical responses
 )
 
 # Agent 2: DeepSeek RAG (Anti-LangChain)
 anti_llm = ChatDeepSeek(
     model="deepseek-chat",
-    temperature=0.2,
+    temperature=0.1,
 )
 
 # Moderator: Claude 3 Haiku (Smaller Anthropic model)
 moderator_llm = ChatAnthropic(
     model_name="claude-3-opus-20240229",
-    temperature=0.2,
+    temperature=0.8,
 )
 
 # Define debate context
 debate_context = """
-Watter ene is beter? Play station of Xbox?
+Wie sal wen - 100 mense of 1 Gorilla? Geen wapens, geen voertuie, net 'n geveg in 'n oop veld. Geen klippe, geen bome, net 'n oop veld. Geen ander diere, net mense en 'n gorilla. Geen hulpbronne, net die mense en die gorilla. Geen strategieë, net die mense en die gorilla. Geen voorbereiding, net die mense en die gorilla. Geen onderhandelinge, net die mense en die gorilla. Geen hulp van buite, net die mense en die gorilla. Geen kans om te vlug, net die mense en die gorilla.
 """
 
 # Prompt for Agent 1 (Pro-LangChain, Claude 3.5 Sonnet)
@@ -46,9 +46,9 @@ pro_langchain_prompt = PromptTemplate(
     input_variables=["context"],
     template="""
 {context}
-You are invited to a debate on the merits of Play Station vs Xbox.
-You are an advocate speaking in Afrikaans.
-You are in favour of Play Station. 
+You are invited to a debate on a fight between 100 people and 1 gorilla.
+You argue that 100 people will win.
+You respond in Afrikaans
 You behave like a 5-year old with many tantrums.
 Keep response less than 100 words.
 """
@@ -59,9 +59,13 @@ anti_langchain_prompt = PromptTemplate(
     input_variables=["context"],
     template="""
 {context}
-You are invited to a debate on the merits of Play Station vs Xbox.
-Jy verkies Xbox.
-Jy is 'n X-box verkoopsman met 'n humeur.
+You are invited to a debate on a fight between 100 people and 1 gorilla.
+You argue that 1 gorilla will win.
+You respond in Afrikaans
+You have a very wild imagition and a deep understanding of warfare.
+You are very good at thinking outside the box and coming up with creative strategies.
+You are technical and analytical.
+You are limited to just hand-to-hand combat, no weapons or tools.
 Keep response less than 100 words.
 """,
 
