@@ -1,4 +1,5 @@
 import os
+import requests
 from langchain_anthropic import ChatAnthropic
 from langchain_deepseek import ChatDeepSeek
 from langchain.prompts import PromptTemplate
@@ -17,10 +18,16 @@ secrets = load_secrets()
 os.environ["ANTHROPIC_API_KEY"] = secrets.get("ANTHROPIC_API_KEY", "")
 os.environ["DEEPSEEK_API_KEY"] = secrets.get("DEEPSEEK_API_KEY", "")
 
+print('available Anthorpic models: ', requests.get('https://api.anthropic.com/v1/models',
+                                                     headers={
+                                                         "x-api-key": os.environ["ANTHROPIC_API_KEY"],
+                                                         "anthropic-version": "2023-06-01"
+                                                     }).json())
+
 # Initialize LLMs
 # Agent 1: Claude 3.5 Sonnet (Pro-LangChain)
 pro_llm = ChatAnthropic(
-    model_name="claude-opus-4-20250514",
+    model_name="claude-3-5-haiku-20241022",
     temperature=0.1,  # Focused, technical responses
 )
 
@@ -32,7 +39,7 @@ anti_llm = ChatDeepSeek(
 
 # Moderator: Claude 3 Haiku (Smaller Anthropic model)
 moderator_llm = ChatAnthropic(
-    model_name="claude-3-opus-20240229",
+    model_name="claude-3-haiku-20240307",
     temperature=0.8,
 )
 
@@ -72,15 +79,28 @@ Keep response less than 100 words.
 )
 
 # Moderator prompt (Claude 3 Haiku)
-moderator_prompt = PromptTemplate(
+moderator_questions = PromptTemplate(
+    input_variables=['context'],
+    template="""
+You are a neutral moderator trying to focus on the debate. 
+Respond in Afrikaans.
+Keep response less than 50 words.
+{context}
+Generate a question based on the context. Direct the question to the debater who is next to respond.
+
+"""
+)
+
+# Moderator prompt (Claude 3 Haiku)
+moderator_summary = PromptTemplate(
     input_variables=["pro_response", "anti_response"],
     template="""
 You are a neutral moderator. Respond in Afrikaans. Review the arguments below:
 
-Pro-LangChain Argument (Claude 3.5 Sonnet):
+Position 1:
 {pro_response}
 
-Anti-LangChain Argument (DeepSeek RAG):
+Position 2:
 {anti_response}
 
 Summarize the key points of each position, evaluate the strengths and weaknesses of each argument, and recommend a practical approach for the project, considering automation, time, and maintainability. Keep the response concise and technical.
@@ -90,7 +110,8 @@ Summarize the key points of each position, evaluate the strengths and weaknesses
 # Create LLM chains using the new RunnableSequence API
 pro_chain = pro_langchain_prompt | pro_llm
 anti_chain = anti_langchain_prompt | anti_llm
-moderator_chain = moderator_prompt | moderator_llm
+moderator_questions_chain = moderator_questions | moderator_llm
+moderator_chain = moderator_summary | moderator_llm
 
 # Function to run the debate
 def run_debate():
@@ -99,12 +120,23 @@ def run_debate():
         print(f"=== Debate Round {i + 1} ===\n")
         #print('--total context:', context, '\n\n')
         # Run Agent 2 (Anti-LangChain)
+        moderator_response = moderator_questions_chain.invoke({"context": context})
+        print("=== Moderator Question to Debater 1 ===")
+        print(moderator_response.content.replace("\\n", "\n"))
+        context = context + "Moderator: " + str(moderator_response.content) + "\n"
+
+
         anti_response = anti_chain.invoke({"context": context})
         print("=== Anti ===")
         print(anti_response.content.replace("\\n", "\n"))
         context = context + "Debater 1: " + str(anti_response.content) + "\n"
         print("\n")
         
+        moderator_response = moderator_questions_chain.invoke({"context": context})
+        print("=== Moderator Question to Debater 2 ===")
+        print(moderator_response.content.replace("\\n", "\n"))
+        context = context + "Moderator: " + str(moderator_response.content) + "\n"
+
         # Run Agent 1 (Pro-LangChain)
         pro_response = pro_chain.invoke({"context": context})
         print("=== Pro ===")
@@ -118,9 +150,10 @@ def run_debate():
         "pro_response": pro_response,
         "anti_response": anti_response
     })
+    print("\n\n------Final context:", context)
     print("=== Moderator ===")
     print(moderator_response.content.replace("\\n", "\n"))
-    print("Final context:", context)
+    
 
 # Execute the debate
 if __name__ == "__main__":
